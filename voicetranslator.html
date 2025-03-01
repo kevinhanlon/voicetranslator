@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Voice Translation Chat</title>
+    <style>
+        :root {
+            --primary-color: #4B56D2;
+            --secondary-color: #82C3EC;
+            --accent-color: #F1F6F5;
+            --dark-color: #472183;
+            --error-color: #e74c3c;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f9f9f9;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 2px solid var(--secondary-color);
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: var(--primary-color);
+            font-size: 1.8rem;
+        }
+        
+        .language-selection {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        select {
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            background-color: white;
+            font-size: 14px;
+        }
+        
+        .chat-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr auto;
+            height: 70vh;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .messages {
+            background-color: white;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .message {
+            padding: 10px 15px;
+            border-radius: 18px;
+            max-width: 70%;
+            word-wrap: break-word;
+            position: relative;
+            margin-bottom: 5px;
+        }
+        
+        .message .original-text {
+            font-style: italic;
+            font-size: 0.8rem;
+            margin-top: 5px;
+            color: #777;
+        }
+        
+        .message .language-indicator {
+            position: absolute;
+            top: -10px;
+            right: 10px;
+            background-color: var(--secondary-color);
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+        
+        .sent {
+            background-color: var(--primary-color);
+            color: white;
+            align-self: flex-end;
+        }
+        
+        .received {
+            background-color: var(--accent-color);
+            color: #333;
+            align-self: flex-start;
+        }
+        
+        .system {
+            background-color: rgba(0, 0, 0, 0.05);
+            color: #666;
+            align-self: center;
+            font-style: italic;
+            font-size: 0.9rem;
+            max-width: 90%;
+            text-align: center;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            padding: 15px;
+            background-color: white;
+            border-top: 1px solid #eee;
+        }
+        
+        .voice-input {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            background-color: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        
+        button:hover {
+            background-color: var(--dark-color);
+        }
+        
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        #recordButton {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+        }
+        
+        #recordButton.recording {
+            background-color: var(--error-color);
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+        
+        .recording-indicator {
+            font-size: 14px;
+            color: #666;
+            margin-left: 10px;
+        }
+        
+        .share-container {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: var(--accent-color);
+            border-radius: 8px;
+        }
+        
+        .share-url {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        #shareUrl {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            background-color: white;
+            font-size: 14px;
+        }
+        
+        #copyButton {
+            padding: 8px 15px;
+        }
+        
+        .connection-info {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .status {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .connected {
+            background-color: #2ecc71;
+        }
+        
+        .disconnected {
+            background-color: var(--error-color);
+        }
+        
+        .connecting {
+            background-color: #f39c12;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .language-selection {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .message {
+                max-width: 85%;
+            }
+            
+            .share-url {
+                flex-direction: column;
+            }
+        }
+        
+        .error-notification {
+            background-color: var(--error-color);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        #loadingTranslation {
+            font-style: italic;
+            color: #777;
+            margin-left: 10px;
+            display: none;
+        }
+        
+        .demo-message {
+            background-color: rgba(146, 168, 209, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .username-container {
+            margin-bottom: 20px;
+        }
+        
+        #username {
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            width: 200px;
+            margin-right: 10px;
+        }
+        
+        .participants {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        
+        .participant {
+            display: inline-block;
+            background-color: rgba(75, 86, 210, 0.1);
+            border-radius: 15px;
+            padding: 3px 10px;
+            margin: 2px;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Real-time Voice Translation Chat</h1>
+            <div id="connectionDisplay">
+                <div class="connection-status">
+                    <span class="status disconnected" id="connectionStatus"></span>
+                    <span id="connectionText">Not Connected</span>
+                </div>
+            </div>
+        </header>
+        
+        <div class="error-notification" id="errorNotification">
+            Error message will appear here
+        </div>
+        
+        <div class="username-container">
+            <input type="text" id="username" placeholder="Your name" maxlength="20">
+            <button id="joinButton">Join Chat</button>
+        </div>
+        
+        <div class="demo-message">
+            1. Enter your name and join the chat
+            2. Select your language
+            3. Click the microphone to speak
+            4. Share the URL to invite others
+        </div>
+        
+        <div class="language-selection">
+            <div>
+                <label for="myLanguage">My language:</label>
+                <select id="myLanguage" disabled>
+                    <option value="en">English</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="it">Italian</option>
+                    <option value="ja">Japanese</option>
+                    <option value="ko">Korean</option>
+                    <option value="zh">Chinese</option>
+                    <option value="ru">Russian</option>
+                    <option value="pt">Portuguese</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="chat-container">
+            <div class="messages" id="messagesContainer">
+                <!-- Welcome message -->
+                <div class="message system">
+                    <div>Welcome to the voice translation chat! Enter your name to join.</div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <div class="voice-input">
+                    <button id="recordButton" disabled>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                            <line x1="12" y1="19" x2="12" y2="23"></line>
+                            <line x1="8" y1="23" x2="16" y2="23"></line>
+                        </svg>
+                    </button>
+                    <span class="recording-indicator" id="recordingStatus">Join chat to start recording</span>
+                    <span id="loadingTranslation">Translating...</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="share-container">
+            <h3>Room Participants</h3>
+            <div id="participantsList" class="participants">
+                <!-- Participants will be listed here -->
+                <span class="participant">No participants yet</span>
+            </div>
+            
+            <h3 style="margin-top: 15px;">Invite others to your chat</h3>
+            <p>Share this unique URL with people you want to chat with:</p>
+            <div class="share-url">
+                <input type="text" id="shareUrl" readonly>
+                <button id="copyButton">Copy</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <!-- Firebase Database -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <script>
+        // DOM Elements
+        const messagesContainer = document.getElementById('messagesContainer');
+        const recordButton = document.getElementById('recordButton');
+        const recordingStatus = document.getElementById('recordingStatus');
+        const myLanguageSelect = document.getElementById('myLanguage');
+        const shareUrlInput = document.getElementById('shareUrl');
+        const copyButton = document.getElementById('copyButton');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const connectionText = document.getElementById('connectionText');
+        const errorNotification = document.getElementById('errorNotification');
+        const loadingTranslation = document.getElementById('loadingTranslation');
+        const usernameInput = document.getElementById('username');
+        const joinButton = document.getElementById('joinButton');
+        const participantsList = document.getElementById('participantsList');
+        
+        // Global variables
+        let isRecording = false;
+        let roomId = null;
+        let userId = null;
+        let username = '';
+        let speechRecognition = null;
+        let hasJoined = false;
+        let database = null;
+        let roomRef = null;
+        let userRef = null;
+        let messagesRef = null;
+        let participantsRef = null;
+        let currentParticipants = {};
+        
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC0o-pZbK1Y4oqzXIjJYpHnHn-Z06qkX5U",
+            authDomain: "voice-translator-app-1df9c.firebaseapp.com",
+            databaseURL: "https://voice-translator-app-1df9c-default-rtdb.firebaseio.com",
+            projectId: "voice-translator-app-1df9c",
+            storageBucket: "voice-translator-app-1df9c.appspot.com",
+            messagingSenderId: "1075842917001",
+            appId: "1:1075842917001:web:62a1bd6962a33f3c91af93"
+        };
+        
+        // LibreTranslate API endpoint
+        const TRANSLATE_API_URL = 'https://translate.argosopentech.com/translate';
+        
+        // Language mappings for speech recognition
+        const speechRecognitionLanguages = {
+            'en': 'en-US',
+            'es': 'es-ES',
+            'fr': 'fr-FR',
+            'de': 'de-DE',
+            'it': 'it-IT',
+            'ja': 'ja-JP',
+            'ko': 'ko-KR',
+            'zh': 'zh-CN',
+            'ru': 'ru-RU',
+            'pt': 'pt-BR'
+        };
+        
+        // Initialize Firebase
+        function initFirebase() {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            database = firebase.database();
+            
+            // Update connection status
+            connectionStatus.className = 'status connecting';
+            connectionText.textContent = 'Connecting...';
+            
+            // Check connection status
+            const connectedRef = database.ref('.info/connected');
+            connectedRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    connectionStatus.className = 'status connected';
+                    connectionText.textContent = 'Connected';
+                } else {
+                    connectionStatus.className = 'status disconnected';
+                    connectionText.textContent = 'Disconnected';
+                }
+            });
+        }
+        
+        // Initialize the app
+        function init() {
+            // Generate a random user ID
+            userId = generateId();
+            
+            // Get or create room ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            roomId = urlParams.get('room');
+            
+            if (!roomId) {
+                // Create a new room
+                roomId = generateId();
+                
+                // Update URL with room ID
+                const newUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+                window.history.pushState({ path: newUrl }, '', newUrl);
+            }
+            
+            // Set share URL
+            shareUrlInput.value = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+            
+            // Initialize Firebase
+            initFirebase();
+            
+            // Set up speech recognition
+            setupSpeechRecognition();
+            
+            // Add event listeners
+            recordButton.addEventListener('click', toggleRecording);
+            copyButton.addEventListener('click', copyShareUrl);
+            myLanguageSelect.addEventListener('change', updateUserLanguage);
+            joinButton.addEventListener('click', joinRoom);
+            window.addEventListener('beforeunload', leaveRoom);
+            
+            // Auto-focus username input
+            usernameInput.focus();
+        }
+        
+        // Join the chat room
+        function joinRoom() {
+            username = usernameInput.value.trim();
+            
+            if (username === '') {
+                showError('Please enter your name to join the chat');
+                return;
+            }
+            
+            // Reference to the room
+            roomRef = database.ref(`rooms/${roomId}`);
+            
+            // Create references
+            messagesRef = roomRef.child('messages');
+            participantsRef = roomRef.child('participants');
+            userRef = participantsRef.child(userId);
+            
+            // Add user to participants
+            userRef.set({
+                username: username,
+                language: myLanguageSelect.value,
+                joinedAt: firebase.database.ServerValue.TIMESTAMP,
+                lastActive: firebase.database.ServerValue.TIMESTAMP
+            });
+            
+            // Remove user when disconnected
+            userRef.onDisconnect().remove();
+            
+            // Set up listeners
+            setupMessageListener();
+            setupParticipantsListener();
+            
+            // Enable controls
+            recordButton.disabled = false;
+            myLanguageSelect.disabled = false;
+            
+            // Disable join controls
+            usernameInput.disabled = true;
+            joinButton.disabled = true;
+            joinButton.textContent = 'Joined';
+            
+            // Update status
+            hasJoined = true;
+            recordingStatus.textContent = 'Click to start recording';
+            
+            // Add system message to Firebase
+            const joinMessage = {
+                type: 'system',
+                text: `${username} has joined the chat`,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            };
+            
+            messagesRef.push(joinMessage);
+        }
+        
+        // Listen for new messages
+        function setupMessageListener() {
+            messagesRef.orderByChild('timestamp').startAt(Date.now()).on('child_added', (snapshot) => {
+                const message = snapshot.val();
+                
+                // Check if it's a system message
+                if (message.type === 'system') {
+                    addSystemMessageToUI(message);
+                    return;
+                }
+                
+                // Don't process translation messages
+                if (message.isTranslation) {
+                    if (message.originalSender !== userId) {
+                        addTranslatedMessageToUI(message, false);
+                    }
+                    return;
+                }
+                
+                // Check if it's from the current user
+                const isSent = message.sender === userId;
+                
+                // Add the message to UI
+                addMessageToUI(message, isSent);
+                
+                // If not from the current user, translate it
+                if (!isSent) {
+                    translateMessageForUser(message);
+                }
+            });
+        }
+        
+        // Listen for participants changes
+        function setupParticipantsListener() {
+            participantsRef.on('value', (snapshot) => {
+                const participants = snapshot.val() || {};
+                currentParticipants = participants;
+                
+                // Update participants UI
+                updateParticipantsUI(participants);
+            });
+        }
+        
+        // Update participants UI
+        function updateParticipantsUI(participants) {
+            // Clear current list
+            participantsList.innerHTML = '';
+            
+            // Count participants
+            const count = Object.keys(participants).length;
+            
+            if (count === 0) {
+                const noParticipants = document.createElement('span');
+                noParticipants.className = 'participant';
+                noParticipants.textContent = 'No participants yet';
+                participantsList.appendChild(noParticipants);
+                return;
+            }
+            
+            // Add each participant
+            Object.entries(participants).forEach(([id, data]) => {
+                const participantSpan = document.createElement('span');
+                participantSpan.className = 'participant';
+                participantSpan.textContent = data.username;
+                participantSpan.title = `Speaking ${getLanguageName(data.language)}`;
+                
+                // Add language indicator
+                const langIndicator = document.createElement('small');
+                langIndicator.style.marginLeft = '5px';
+                langIndicator.style.opacity = '0.7';
+                langIndicator.textContent = `(${data.language})`;
+                participantSpan.appendChild(langIndicator);
+                
+                participantsList.appendChild(participantSpan);
+            });
+        }
+        
+        // Translate message for the current user
+        function translateMessageForUser(message) {
+            const sourceLang = message.language;
+            const targetLang = myLanguageSelect.value;
+            
+            // Don't translate if languages are the same
+            if (sourceLang === targetLang) {
+                return;
+            }
+            
+            // Translate the message
+            translateText(message.text, sourceLang, targetLang)
+                .then(translatedText => {
+                    if (translatedText && translatedText !== message.text) {
+                        // Create translation message
+                        const translationMessage = {
+                            isTranslation: true,
+                            originalSender: message.sender,
+                            senderName: message.senderName,
+                            originalText: message.text,
+                            text: translatedText,
+                            originalLang: sourceLang,
+                            targetLang: targetLang,
+                            timestamp: firebase.database.ServerValue.TIMESTAMP
+                        };
+                        
+                        // Send translation to Firebase
+                        messagesRef.push(translationMessage);
+                    }
+                })
+                .catch(error => {
+                    console.error('Translation error:', error);
+                });
+        }
+        
+        // Update user language
+        function updateUserLanguage() {
+            if (!hasJoined) return;
+            
+            const newLanguage = myLanguageSelect.value;
+            
+            // Update in Firebase
+            userRef.update({
+                language: newLanguage,
+                lastActive: firebase.database.ServerValue.TIMESTAMP
+            });
+            
+            // Update speech recognition
+            updateSpeechRecognition();
+            
+            // Add system message
+            const langChangeMessage = {
+                type: 'system',
+                text: `${username} is now speaking in ${getLanguageName(newLanguage)}`,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            };
+            
+            messagesRef.push(langChangeMessage);
+        }
+        
+        // Leave the chat room
+        function leaveRoom() {
+            if (hasJoined && userRef) {
+                // Add leave message
+                const leaveMessage = {
+                    type: 'system',
+                    text: `${username} has left the chat`,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                };
+                
+                messagesRef.push(leaveMessage);
+                
+                // Remove user
+                userRef.remove();
+            }
+        }
+        
+        // Generate a random ID
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
+        }
+        
+        // Set up speech recognition
+        function setupSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                showError("Speech recognition is not supported in your browser. Try using Chrome or Edge.");
+                recordButton.disabled = true;
+                return;
+            }
+            
+            speechRecognition = new SpeechRecognition();
+            speechRecognition.continuous = false;
+            speechRecognition.interimResults = true;
+            
+            // Set initial language
+            updateSpeechRecognition();
+            
+            speechRecognition.onresult = handleSpeechResult;
+            speechRecognition.onerror = handleSpeechError;
+            speechRecognition.onend = function() {
+                if (isRecording) {
+                    isRecording = false;
+                    recordButton.classList.remove('recording');
+                    recordingStatus.textContent = 'Processing...';
+                }
+            };
+        }
+        
+        // Update speech recognition language
+        function updateSpeechRecognition() {
+            if (!speechRecognition) return;
+            
+            const selectedLang = myLanguageSelect.value;
+            const recognitionLang = speechRecognitionLanguages[selectedLang] || 'en-US';
+            speechRecognition.lang = recognitionLang;
+        }
+        
+        // Toggle recording
+        function toggleRecording() {
+            if (!hasJoined) return;
+            
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+        
+        // Start recording
+        function startRecording() {
+            if (!speechRecognition || !hasJoined) return;
+            
+            try {
+                speechRecognition.start();
+                isRecording = true;
+                recordButton.classList.add('recording');
+                recordingStatus.textContent = 'Recording... Speak now';
+                
+                // Update active timestamp
+                if (userRef) {
+                    userRef.update({
+                        lastActive: firebase.database.ServerValue.TIMESTAMP
+                    });
+                }
+            } catch (error) {
+                console.error('Error starting speech recognition:', error);
+                showError('Could not start speech recognition. Please try again.');
+            }
+        }
+        
+        // Stop recording
+        function stopRecording() {
+            if (!speechRecognition || !isRecording) return;
+            
+            try {
+                speechRecognition.stop();
+                // Note: isRecording will be set to false in the onend handler
+            } catch (error) {
+                console.error('Error stopping speech recognition:', error);
+                isRecording = false;
+                recordButton.classList.remove('recording');
+                recordingStatus.textContent = 'Click to start recording';
+            }
+        }
+        
+        // Handle speech recognition results
+        function handleSpeechResult(event) {
+            const results = event.results;
+            
+            if (results.length > 0) {
+                const result = results[results.length - 1];
+                
+                if (result.isFinal) {
+                    const text = result[0].transcript.trim();
+                    if (text) {
+                        recordingStatus.textContent = 'Processing...';
+                        
+                        // Send message to Firebase
+                        sendMessageToFirebase(text);
+                    } else {
+                        recordingStatus.textContent = 'No speech detected. Try again.';
+                    }
+                }
+            }
+        }
+        
+        // Send message to Firebase
+        function sendMessageToFirebase(text) {
+            if (!hasJoined || !messagesRef) return;
+            
+            const message = {
+                sender: userId,
+                senderName: username,
+                text: text,
+                language: myLanguageSelect.value,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            };
+            
+            messagesRef.push(message)
+                .then(() => {
+                    recordingStatus.textContent = 'Message sent';
+                    setTimeout(() => {
+                        recordingStatus.textContent = 'Click to start recording';
+                    }, 2000);
+                    
+                    // Update active timestamp
+                    if (userRef) {
+                        userRef.update({
+                            lastActive: firebase.database.ServerValue.TIMESTAMP
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error sending message:', error);
+                    showError('Failed to send message. Please try again.');
+                    recordingStatus.textContent = 'Click to start recording';
+                });
+        }
+        
+        // Handle speech recognition errors
+        function handleSpeechError(event) {
+            console.error('Speech recognition error:', event.error);
+            
+            isRecording = false;
+            recordButton.classList.remove('recording');
+            
+            if (event.error === 'no-speech') {
+                recordingStatus.textContent = 'No speech detected. Try again.';
+            } else if (event.error === 'aborted') {
+                recordingStatus.textContent = 'Recording stopped.';
+            } else {
+                showError(`Speech recognition error: ${event.error}`);
+                recordingStatus.textContent = 'Click to start recording';
+            }
+        }
+        
+        // Translate text using LibreTranslate API
+        async function translateText(text, sourceLang, targetLang) {
+            try {
+                const response = await fetch(TRANSLATE_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        q: text,
+                        source: sourceLang,
+                        target: targetLang
+                    }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Translation API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                return data.translatedText;
+            } catch (error) {
+                console.error('Translation error:', error);
+                
+                // Fallback translation for demo purposes
+                if (sourceLang === 'en' && targetLang === 'es') {
+                    return fallbackTranslate(text, 'en-es');
+                } else if (sourceLang === 'es' && targetLang === 'en') {
+                    return fallbackTranslate(text, 'es-en');
+                }
+                
+                throw error;
+            }
+        }
+        
+        // Fallback translation (basic word replacement)
+        function fallbackTranslate(text, direction) {
+            if (direction === 'en-es') {
+                return text
+                    .replace(/hello/gi, 'hola')
+                    .replace(/goodbye/gi, 'adiós')
+                    .replace(/thank you/gi, 'gracias')
+                    .replace(/how are you/gi, 'cómo estás')
+                    .replace(/my name is/gi, 'me llamo')
+                    .replace(/yes/gi, 'sí')
+                    .replace(/no/gi, 'no')
+                    .replace(/please/gi, 'por favor')
+                    .replace(/sorry/gi, 'lo siento')
+                    .replace(/good morning/gi, 'buenos días')
+                    .replace(/good afternoon/gi, 'buenas tardes')
+                    .replace(/good evening/gi, 'buenas noches')
+                    .replace(/i don't understand/gi, 'no entiendo')
+                    .replace(/i understand/gi, 'entiendo')
+                    .replace(/i love/gi, 'amo')
+                    .replace(/i want/gi, 'quiero')
+                    .replace(/i need/gi, 'necesito')
+                    .replace(/today/gi, 'hoy')
+                    .replace(/tomorrow/gi, 'mañana')
+                    .replace(/yesterday/gi, 'ayer');
+            } else if (direction === 'es-en') {
+                return text
+                    .replace(/hola/gi, 'hello')
+                    .replace(/adiós/gi, 'goodbye')
+                    .replace(/gracias/gi, 'thank you')
+                    .replace(/cómo estás/gi, 'how are you')
+                    .replace(/me llamo/gi, 'my name is')
+                    .replace(/sí/gi, 'yes')
+                    .replace(/no/gi, 'no')
+                    .replace(/por favor/gi, 'please')
+                    .replace(/lo siento/gi, 'sorry')
+                    .replace(/buenos días/gi, 'good morning')
+                    .replace(/buenas tardes/gi, 'good afternoon')
+                    .replace(/buenas noches/gi, 'good evening')
+                    .replace(/no entiendo/gi, "I don't understand")
+                    .replace(/entiendo/gi, 'I understand')
+                    .replace(/amo/gi, 'I love')
+                    .replace(/quiero/gi, 'I want')
+                    .replace(/necesito/gi, 'I need')
+                    .replace(/hoy/gi, 'today')
+                    .replace(/mañana/gi, 'tomorrow')
+                    .replace(/ayer/gi, 'yesterday');
+            }
+            
+            // If no match, return original text
+            return text;
+        }
+        
+        // Add message to UI
+        function addMessageToUI(message, isSent) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
+            
+            // Language indicator
+            const langIndicator = document.createElement('span');
+            langIndicator.className = 'language-indicator';
+            langIndicator.textContent = getLanguageName(message.language);
+            messageDiv.appendChild(langIndicator);
+            
+            // Sender name for received messages
+            if (!isSent) {
+                const senderName = document.createElement('div');
+                senderName.style.fontWeight = 'bold';
+                senderName.style.fontSize = '0.8rem';
+                senderName.style.marginBottom = '5px';
+                senderName.textContent = message.senderName;
+                messageDiv.appendChild(senderName);
+            }
+            
+            // Message text
+            const textSpan = document.createElement('div');
+            textSpan.textContent = message.text;
+            messageDiv.appendChild(textSpan);
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        // Add translated message to UI
+        function addTranslatedMessageToUI(message, isSent) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
+            
+            // Language indicator
+            const langIndicator = document.createElement('span');
+            langIndicator.className = 'language-indicator';
+            langIndicator.textContent = getLanguageName(message.targetLang);
+            messageDiv.appendChild(langIndicator);
+            
+            // Sender name for received messages
+            if (!isSent) {
+                const senderName = document.createElement('div');
+                senderName.style.fontWeight = 'bold';
+                senderName.style.fontSize = '0.8rem';
+                senderName.style.marginBottom = '5px';
+                senderName.textContent = message.senderName;
+                messageDiv.appendChild(senderName);
+            }
+            
+            // Translated title
+            const translationTitle = document.createElement('div');
+            translationTitle.style.fontStyle = 'italic';
+            translationTitle.style.fontSize = '0.8rem';
+            translationTitle.style.marginBottom = '5px';
+            translationTitle.textContent = `Translation (${getLanguageName(message.targetLang)})`;
+            messageDiv.appendChild(translationTitle);
+            
+            // Message text
+            const textSpan = document.createElement('div');
+            textSpan.textContent = message.text;
+            messageDiv.appendChild(textSpan);
+            
+            // Original text
+            const originalSpan = document.createElement('div');
+            originalSpan.className = 'original-text';
+            originalSpan.textContent = `Original (${getLanguageName(message.originalLang)}): ${message.originalText}`;
+            messageDiv.appendChild(originalSpan);
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        // Add system message to UI
+        function addSystemMessageToUI(message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message system';
+            messageDiv.textContent = message.text;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        // Get language name from code
+        function getLanguageName(langCode) {
+            const languages = {
+                'en': 'English',
+                'es': 'Spanish',
+                'fr': 'French',
+                'de': 'German',
+                'it': 'Italian',
+                'ja': 'Japanese',
+                'ko': 'Korean',
+                'zh': 'Chinese',
+                'ru': 'Russian',
+                'pt': 'Portuguese'
+            };
+            
+            return languages[langCode] || langCode;
+        }
+        
+        // Copy share URL to clipboard
+        function copyShareUrl() {
+            shareUrlInput.select();
+            document.execCommand('copy');
+            
+            const originalText = copyButton.textContent;
+            copyButton.textContent = 'Copied!';
+            
+            setTimeout(() => {
+                copyButton.textContent = originalText;
+            }, 2000);
+        }
+        
+        // Show error notification
+        function showError(message) {
+            errorNotification.textContent = message;
+            errorNotification.style.display = 'block';
+            
+            setTimeout(() => {
+                errorNotification.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Initialize the app when document is loaded
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
